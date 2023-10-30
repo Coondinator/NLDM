@@ -1,0 +1,8 @@
+latent_size: 2560
+latent_channel: 1
+seed: 1
+use_ema: False
+batch_size: 16
+loss_type: l2
+ema_decay: 0.9999
+ema_update_rate: 1
