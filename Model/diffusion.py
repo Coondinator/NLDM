@@ -16,6 +16,7 @@ class NLDM(nn.Module):
         args = Arguments('./Model', filename=config_file)
         self.seed = args.seed
         self.latent_size = args.latent_size
+        self.latent_channel = args.latent_channel
         self.model = model
         self.use_ema = args.use_ema
 
@@ -87,7 +88,7 @@ class NLDM(nn.Module):
         return out
 
     def remove_noise(self, latent, t, y):
-        output = (latent - extract(self.remove_noise_coeff, t, latent.shape) * self.model(latent, t, y)) * extract(self.reciprocal_sqrt_alpha, t, latent.shape)
+        output = (latent - extract(self.remove_noise_coeff, t, latent.shape) * self.model(latent, t, y)) * extract(self.reciprocal_sqrt_alphas, t, latent.shape)
         return output
 
     @torch.no_grad()
@@ -95,11 +96,12 @@ class NLDM(nn.Module):
         if y is not None and batch_size != len(y):
             raise ValueError("sample batch size different from length of given y")
 
-        x = torch.randn(batch_size, self.img_channels, *self.img_size, device=device)
+        x = torch.randn(batch_size, self.latent_size, device=device)
+        print('x.shape', x.shape)
 
         for t in range(self.num_timesteps - 1, -1, -1):
             t_batch = torch.tensor([t], device=device).repeat(batch_size)
-            x = self.remove_noise(x, t_batch, y, use_ema)
+            x = self.remove_noise(x, t_batch, y)
 
             if t > 0:
                 x += extract(self.sigma, t_batch, x.shape) * torch.randn_like(x)

@@ -32,6 +32,21 @@ class PositionalEmbedding(nn.Module):
         return emb
 
 
+class HiddenLayer(nn.Module):
+    def __init__(self, latent_dim, time_dim):
+        super().__init__()
+        self.layer = nn.Sequential(
+            nn.Linear(in_features=latent_dim+time_dim, out_features=latent_dim),
+            nn.BatchNorm1d(latent_dim),
+            nn.ReLU(),
+            nn.Dropout(p=0.3)
+        )
+
+    def forward(self, x, time_emb):
+        x = torch.cat((x, time_emb), dim=1)
+        x = self.layer(x)
+        return x
+
 class DownSample(nn.Module):
     def __init__(self, input_dim):
         super().__init__()
@@ -39,7 +54,7 @@ class DownSample(nn.Module):
             nn.Linear(in_features=input_dim, out_features=input_dim//2),
             nn.BatchNorm1d(input_dim//2),
             nn.ReLU(),
-            nn.Dropout(p=0.5)
+            nn.Dropout(p=0.3)
         )
 
     def forward(self, x):
@@ -66,33 +81,20 @@ class MLP(nn.Module):
             PositionalEmbedding(base_channels),
             nn.Linear(base_channels, time_emb_dim),
             nn.SiLU(),
-            nn.Linear(time_emb_dim, 2560),
+            nn.Linear(time_emb_dim, 10),
         ) if time_emb_dim is not None else None
         '''
         self.time_bias = nn.Sequential(nn.SiLU,
             nn.Linear(time_emb_dim, out_channels)) if time_emb_dim is not None else None
         '''
-        self.input_layer = nn.Linear(in_features=2560, out_features=1024)
+        self.input_layer = nn.Linear(in_features=2570, out_features=2560)
         self.activation0 = nn.ReLU()
-
-        self.test = nn.Sequential(
-            nn.Linear(in_features=1024, out_features=512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(),
-            nn.Dropout(p=0.5)
-        )
-
-        self.down_layer = nn.ModuleList()
-        self.up_layer = nn.ModuleList()
+        self.hidden_layer = nn.ModuleList()
 
         for i in range(layer_num):
-            down_num = int(1024/2**i)
-            up_num = int(1024/2**(layer_num-i))
+          self.hidden_layer.append(HiddenLayer(latent_dim=2560, time_dim=10))
 
-            self.down_layer.append(DownSample(input_dim=down_num))
-            self.up_layer.append(UpSample(input_dim=up_num))
-
-        self.output_layer = nn.Linear(in_features=1024, out_features=2560)
+        self.output_layer = nn.Linear(in_features=2560, out_features=2560)
         self.activation = nn.Sigmoid()
 
     def forward(self, x, time, class_emb=None):
@@ -105,9 +107,12 @@ class MLP(nn.Module):
         else:
             time_emb = None
 
-        x += time_emb
+        #x += time_emb
+        x = torch.cat((x, time_emb), dim=1)
+        #print('x.shape:', x.shape)
         x = self.activation0(self.input_layer(x))
-        skip = [x]
+        skip = []
+        skip.append(x)
 
         '''
         if self.time_bias is not None:
@@ -116,13 +121,17 @@ class MLP(nn.Module):
             x += self.time_bias(time_emb)[:, :, None, None]
         '''
 
-        for layer in self.down_layer:
-            x = layer(x)
-            skip.append(x)
+        #print(x.shape)
+        #print(time_emb.shape)
+        for index, layer in enumerate(self.hidden_layer):
+            if (index == 0):
+                x = layer(x, time_emb)
+            else:
+                residual = skip.pop()
+                x = x + residual
+                x = layer(x, time_emb)
 
-        for layer in self.up_layer:
-            x = x+skip.pop()
-            x = layer(x)
+            skip.append(x)
 
         x = self.activation(self.output_layer(x))
 

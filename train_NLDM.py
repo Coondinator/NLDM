@@ -28,21 +28,20 @@ train_dataloader = DataLoader(dataset=train_data, batch_size=64, shuffle=True)
 test_dataloader = DataLoader(dataset=test_data, batch_size=64, shuffle=True)
 
 learning_rate = 0.0001
-iteration = 100
+iteration = 1000
 
 def get_NLDM():
     config_name = 'NLDM_config.yaml'
     args = Arguments('./Model', filename=config_name)
-
     betas = generate_linear_schedule(T=1000, low=1e-4, high=0.02)
+    time_emb_dim = 128
 
-    time_emb_dim = 1
-    mlp = MLP(base_channels=2560, time_emb_dim=time_emb_dim, layer_num=2)
-
+    mlp = MLP(base_channels=2560, time_emb_dim=time_emb_dim, layer_num=8)
     diffusion = NLDM(config_file=config_name, model=mlp, betas=betas).to(device)
+
     return diffusion
 
-def basic_training(model):
+def basic_train(model, save_path):
     acc_train_loss = 0
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -67,17 +66,17 @@ def basic_training(model):
 
             #sample = model.sample(batch_size=1, device=device)
         test_loss /= len(test_dataloader)
-        acc_train_loss /= 1000
+        acc_train_loss /= len(train_dataloader)
 
         print('[{:03d}/{}] acc_train_loss: {:.4f}\t test_loss: {:.4f}'.format(
                 i, iteration, acc_train_loss, test_loss))
 
-    return
-
+    torch.save(model.state_dict(), save_path)
 
 
 if __name__ == '__main__':
 
+    save_path = './Model/Model.pt'
     model = get_NLDM()
-    basic_training(model)
+    basic_train(model, save_path)
 
