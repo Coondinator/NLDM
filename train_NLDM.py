@@ -1,6 +1,6 @@
 import argparse
 import datetime
-
+import wandb
 import torch
 import numpy as np
 from tqdm import tqdm
@@ -10,9 +10,7 @@ from Model.diffusion import NLDM, generate_linear_schedule
 from Model.denoiser import MLP
 from torch.utils.data import dataset, Dataset, DataLoader
 
-
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-
 
 torch.set_default_dtype(torch.float32)
 torch.manual_seed(0)
@@ -28,31 +26,32 @@ train_dataloader = DataLoader(dataset=train_data, batch_size=64, shuffle=True)
 test_dataloader = DataLoader(dataset=test_data, batch_size=64, shuffle=True)
 
 learning_rate = 0.0001
-iteration = 1000
+iteration = 2000
 
 def get_NLDM():
     config_name = 'NLDM_config.yaml'
     args = Arguments('./Model', filename=config_name)
     betas = generate_linear_schedule(T=1000, low=1e-4, high=0.02)
-    time_emb_dim = 128
+    time_emb_dim = 10
 
-    mlp = MLP(base_channels=2560, time_emb_dim=time_emb_dim, layer_num=8)
+    mlp = MLP(positional_dim=128, time_emb_dim=time_emb_dim, layer_num=8)
     diffusion = NLDM(config_file=config_name, model=mlp, betas=betas).to(device)
 
     return diffusion
 
 def basic_train(model, save_path):
     acc_train_loss = 0
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
     for i in range(iteration):
 
         model.train()
         for train_data in train_dataloader:
+            optimizer.zero_grad()
             train_data = train_data.to(device)
             train_loss = model(train_data)
             acc_train_loss += train_loss.item()
-            optimizer.zero_grad()
+
             train_loss.backward()
             optimizer.step()
 

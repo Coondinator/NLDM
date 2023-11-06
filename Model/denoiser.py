@@ -39,7 +39,7 @@ class HiddenLayer(nn.Module):
             nn.Linear(in_features=latent_dim+time_dim, out_features=latent_dim),
             nn.BatchNorm1d(latent_dim),
             nn.ReLU(),
-            nn.Dropout(p=0.3)
+            nn.Dropout(p=0.5)
         )
 
     def forward(self, x, time_emb):
@@ -47,39 +47,12 @@ class HiddenLayer(nn.Module):
         x = self.layer(x)
         return x
 
-class DownSample(nn.Module):
-    def __init__(self, input_dim):
-        super().__init__()
-        self.layer = nn.Sequential(
-            nn.Linear(in_features=input_dim, out_features=input_dim//2),
-            nn.BatchNorm1d(input_dim//2),
-            nn.ReLU(),
-            nn.Dropout(p=0.3)
-        )
-
-    def forward(self, x):
-        x = self.layer(x)
-        return x
-
-class UpSample(nn.Module):
-    def __init__(self, input_dim):
-        super().__init__()
-        self.layer = nn.Sequential(
-            nn.Linear(input_dim, input_dim*2),
-            nn.BatchNorm1d(input_dim*2),
-            nn.ReLU()
-        )
-
-    def forward(self, x):
-        x = self.layer(x)
-        return x
-
 class MLP(nn.Module):
-    def __init__(self, base_channels, time_emb_dim, layer_num):
+    def __init__(self, positional_dim, time_emb_dim, layer_num):
         super().__init__()
         self.time_emb_layer = nn.Sequential(
-            PositionalEmbedding(base_channels),
-            nn.Linear(base_channels, time_emb_dim),
+            PositionalEmbedding(positional_dim),
+            nn.Linear(positional_dim, time_emb_dim),
             nn.SiLU(),
             nn.Linear(time_emb_dim, 10),
         ) if time_emb_dim is not None else None
