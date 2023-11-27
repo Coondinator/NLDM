@@ -1,0 +1,10 @@
+prediction: latent
+latent_size: 1280
+latent_channel: 1
+seed: 1
+batch_size: 16
+loss_type: mse
+
+num_train_timesteps: 500
+
+skip_connection: True

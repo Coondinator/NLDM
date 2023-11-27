@@ -60,14 +60,14 @@ class MLP(nn.Module):
         self.time_bias = nn.Sequential(nn.SiLU,
             nn.Linear(time_emb_dim, out_channels)) if time_emb_dim is not None else None
         '''
-        self.input_layer = nn.Linear(in_features=2570, out_features=2560)
+        self.input_layer = nn.Linear(in_features=794, out_features=784)
         self.activation0 = nn.ReLU()
         self.hidden_layer = nn.ModuleList()
 
         for i in range(layer_num):
-          self.hidden_layer.append(HiddenLayer(latent_dim=2560, time_dim=10))
+          self.hidden_layer.append(HiddenLayer(latent_dim=784, time_dim=10))
 
-        self.output_layer = nn.Linear(in_features=2560, out_features=2560)
+        self.output_layer = nn.Linear(in_features=784, out_features=784)
         self.activation = nn.Sigmoid()
 
     def forward(self, x, time, class_emb=None):

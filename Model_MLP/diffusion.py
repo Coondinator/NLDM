@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .ema import EMA
+from copy import deepcopy
 from .argument import Arguments
 from functools import partial
 from argparse import ArgumentParser
@@ -13,17 +13,16 @@ class NLDM(nn.Module):
 
     def __init__(self, config_file, model, betas):
         super().__init__()
-        args = Arguments('./Model', filename=config_file)
+
+
+
+        args = Arguments('./Model_MLP', filename=config_file)
         self.seed = args.seed
         self.latent_size = args.latent_size
         self.latent_channel = args.latent_channel
         self.model = model
-        self.use_ema = args.use_ema
 
-        if self.use_ema:
-            self.ema_decay = args.ema_decay
-            self.ema_start = args.ema_start
-            self.ema_update_rate = args.ema_update_rate
+        self.step = 0
 
         if args.loss_type not in ["l1", "l2"]:
             raise ValueError("__init__() got unknown loss type")
@@ -61,6 +60,7 @@ class NLDM(nn.Module):
 
         return self.get_losses(latent, t, y)
 
+
     def get_losses(self, latent, t, y):
         torch.manual_seed(self.seed)
         self.seed += 1
@@ -76,10 +76,11 @@ class NLDM(nn.Module):
         # 256, 1, 2560
 
         if self.loss_type == "l1":
-            loss = F.l1_loss(estimated_noise, noise)
+            # loss = F.l1_loss(estimated_noise, noise)
+            loss = F.l1_loss(estimated_noise, latent)
         elif self.loss_type == "l2":
-            loss = F.mse_loss(estimated_noise, noise)
-
+            # loss = F.mse_loss(estimated_noise, noise)
+            loss = F.mse_loss(estimated_noise, latent)
         return loss
 
     def add_noise(self, latent, t, noise):
@@ -87,12 +88,15 @@ class NLDM(nn.Module):
                                                                                     t, latent.shape) * noise
         return out
 
-    def remove_noise(self, latent, t, y):
-        output = (latent - extract(self.remove_noise_coeff, t, latent.shape) * self.model(latent, t, y)) * extract(self.reciprocal_sqrt_alphas, t, latent.shape)
+    def remove_noise(self, latent, t, y, use_ema=True):
+        output = ((latent - extract(self.remove_noise_coeff, t, latent.shape) * self.model(latent, t, y)) *
+                extract(self.reciprocal_sqrt_alphas, t, latent.shape))
+
         return output
 
+
     @torch.no_grad()
-    def sample(self, batch_size, device, y=None, use_ema=False):
+    def sample(self, batch_size, device, y=None):
         if y is not None and batch_size != len(y):
             raise ValueError("sample batch size different from length of given y")
 

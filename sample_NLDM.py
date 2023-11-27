@@ -1,8 +1,8 @@
 import torch
 import numpy as np
-from Model.argument import Arguments
-from Model.diffusion import NLDM, generate_linear_schedule
-from Model.denoiser import MLP
+from Model_MLP.argument import Arguments
+from Model_MLP.diffusion import NLDM, generate_linear_schedule
+from Model_MLP.denoiser import MLP
 from torch.utils.data import dataset, Dataset, DataLoader
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -11,7 +11,7 @@ torch.set_default_dtype(torch.float32)
 torch.manual_seed(0)
 def get_NLDM():
     config_name = 'NLDM_config.yaml'
-    args = Arguments('./Model', filename=config_name)
+    args = Arguments('Model_MLP', filename=config_name)
     betas = generate_linear_schedule(T=1000, low=1e-4, high=0.02)
     time_emb_dim = 128
 
@@ -32,5 +32,5 @@ def sample(load, save):
 
 if __name__ == '__main__':
     save_path = './Save/'
-    load_path = './Model/Model.pt'
+    load_path = 'Model_MLP/Model.pt'
     sample(load_path, save_path)
