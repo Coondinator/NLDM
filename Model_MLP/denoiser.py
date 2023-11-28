@@ -48,11 +48,11 @@ class HiddenLayer(nn.Module):
         return x
 
 class MLP(nn.Module):
-    def __init__(self, positional_dim, time_emb_dim, layer_num):
+    def __init__(self, latent_dim, positional_num, time_emb_dim, layer_num):
         super().__init__()
         self.time_emb_layer = nn.Sequential(
-            PositionalEmbedding(positional_dim),
-            nn.Linear(positional_dim, time_emb_dim),
+            PositionalEmbedding(positional_num),
+            nn.Linear(positional_num, time_emb_dim),
             nn.SiLU(),
             nn.Linear(time_emb_dim, 10),
         ) if time_emb_dim is not None else None
@@ -60,14 +60,14 @@ class MLP(nn.Module):
         self.time_bias = nn.Sequential(nn.SiLU,
             nn.Linear(time_emb_dim, out_channels)) if time_emb_dim is not None else None
         '''
-        self.input_layer = nn.Linear(in_features=1290, out_features=1280)
+        self.input_layer = nn.Linear(in_features=(latent_dim+time_emb_dim), out_features=latent_dim)
         self.activation0 = nn.ReLU()
         self.hidden_layer = nn.ModuleList()
 
         for i in range(layer_num):
-          self.hidden_layer.append(HiddenLayer(latent_dim=1280, time_dim=10))
+          self.hidden_layer.append(HiddenLayer(latent_dim=latent_dim, time_dim=time_emb_dim))
 
-        self.output_layer = nn.Linear(in_features=1280, out_features=1280)
+        self.output_layer = nn.Linear(in_features=latent_dim, out_features=latent_dim)
         self.activation = nn.Sigmoid()
 
     def forward(self, x, time, class_emb=None):
@@ -75,7 +75,7 @@ class MLP(nn.Module):
         if self.time_emb_layer is not None:
             if time is None:
                 raise ValueError("time conditioning was specified but time is not passed")
-            time_emb = self.time_emb_layer(time)  #[batch, 2560]
+            time_emb = self.time_emb_layer(time)  #[batch, latent_dim]
 
         else:
             time_emb = None

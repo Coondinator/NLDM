@@ -1,7 +1,6 @@
 import wandb
 import torch
 import numpy as np
-from tqdm import tqdm
 from ExPIL import process_ExPIL, process_single_ExPIL, ExPIL, create_MultiVariationData
 from Model_Transformer.argument import Arguments
 from Model_Transformer.diffusion import LDM
@@ -14,18 +13,16 @@ torch.manual_seed(0)
 
 data_path = '/home/leo/Project/Datasets/ExPIL'
 z, *_ = process_single_ExPIL(data_path)
-ExPIL_dataset = ExPIL(z=np.array(z))
+ExPIL_dataset = ExPIL(latent=np.array(z))
 train_size = int(0.8 * len(ExPIL_dataset))
-print('train_size:', train_size)
-train2 = torch.ones((2, 1, 1280))
-# ones = torch.normal(size=(200, 1, 1280))
-train3 = create_MultiVariationData(200, 1280)
-print('shape:', train3.shape)
 test_size = len(ExPIL_dataset) - train_size
 
 train_data, test_data = torch.utils.data.random_split(ExPIL_dataset, [train_size, test_size])
+ones_data = torch.ones((2, 1, 1280))
+multi_variation_data = create_MultiVariationData(200, 1280, unsqueeze=1)
+print(multi_variation_data.shape)
 
-train_dataloader = DataLoader(dataset=train3, batch_size=32, shuffle=True)
+train_dataloader = DataLoader(dataset=train_data, batch_size=32, shuffle=True)
 test_dataloader = DataLoader(dataset=test_data, batch_size=32, shuffle=True)
 
 learning_rate = 0.0025

@@ -6,6 +6,8 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 
 
 def create_MultiVariationData(batch, dim, unsqueeze=None):
+    # Create a tensor data with multivariate gaussian distribution [bacth, (1), dim]
+
     # 定义均值和协方差矩阵（1000维）
     mean = torch.zeros(dim)
     covariance_matrix = torch.eye(dim)  # 假设协方差矩阵是单位矩阵
@@ -14,7 +16,6 @@ def create_MultiVariationData(batch, dim, unsqueeze=None):
     multivariate_normal = MultivariateNormal(loc=mean, covariance_matrix=covariance_matrix)
 
     data = multivariate_normal.sample((batch,))
-    data = data.unsqueeze(1)
 
     if unsqueeze:
         data = data.unsqueeze(unsqueeze)
@@ -70,9 +71,13 @@ def process_single_ExPIL(root_path):
 
 
 class ExPIL(Dataset):
-    def __init__(self, z, trans=None, index=None, frames=None):
-        # self.z = torch.squeeze(torch.from_numpy(z))
-        self.z = torch.from_numpy(z)
+    def __init__(self, latent, extra_channel=True, trans=None, index=None, frames=None):
+        if extra_channel:
+            # MLP denoiser input shape [batch, latent_dim]
+            self.z = torch.from_numpy(latent)
+        else:
+            # Transformer denoiser input shape [batch, 1, latent_dim]
+            self.z = torch.squeeze(torch.from_numpy(latent))
         '''
         self.genre = None
         self.index = torch.from_numpy(index)

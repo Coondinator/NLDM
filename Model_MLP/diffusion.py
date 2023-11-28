@@ -28,7 +28,6 @@ class NLDM(nn.Module):
             raise ValueError("__init__() got unknown loss type")
         self.loss_type = args.loss_type
 
-        self.step = 0
         #self.latent_chanel = args.latent_channel
         self.num_timesteps = len(betas)
 

@@ -15,15 +15,13 @@ torch.manual_seed(0)
 
 data_path = '/home/leo/Project/Datasets/ExPIL'
 z, *_ = process_single_ExPIL(data_path)
-ExPIL_dataset = ExPIL(z=np.array(z))
-train_size = int(0.005*len(ExPIL_dataset))
-print('train_size:', train_size)
-train2 = torch.ones((2, 2560))
-#train_size = 80
+ExPIL_dataset = ExPIL(latent=np.array(z))
+train_size = int(0.8*len(ExPIL_dataset))
 test_size = len(ExPIL_dataset)-train_size
 
 train_data, test_data = torch.utils.data.random_split(ExPIL_dataset, [train_size, test_size])
-#train_dataloader = DataLoader(dataset=train_data, batch_size=64, shuffle=True)
+ones_datat = torch.ones((2, 2560))
+
 train_dataloader = DataLoader(dataset=train_data, batch_size=64, shuffle=True)
 test_dataloader = DataLoader(dataset=test_data, batch_size=64, shuffle=True)
 
@@ -34,9 +32,8 @@ def get_NLDM():
     config_name = 'NLDM_config.yaml'
     args = Arguments('Model_MLP', filename=config_name)
     betas = generate_linear_schedule(T=1000, low=1e-4, high=0.02)
-    time_emb_dim = 10
 
-    mlp = MLP(positional_dim=128, time_emb_dim=time_emb_dim, layer_num=8)
+    mlp = MLP(positional_num=args.positional_num, time_emb_dim=args.time_emb_dim, layer_num=args.layer_num)
     diffusion = NLDM(config_file=config_name, model=mlp, betas=betas).to(device)
 
     return diffusion
