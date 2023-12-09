@@ -86,6 +86,7 @@ class FinalLayer(nn.Module):
         return x
 
 class MLP(nn.Module):
+
     def __init__(self, in_dim, h_dim, layer_n, dropout):
         super().__init__()
 
@@ -123,9 +124,70 @@ class MLP(nn.Module):
         for block in self.hidden_layers:
             x = block(x, t)  # (N, T, D)
         x = self.final_layer(x,t)
-
+        
         return x
+      
+      
+class MLP_old(nn.Module):
+       def __init__(self, latent_dim, positional_num, time_emb_dim, layer_num):
+        super().__init__()
+        self.time_emb_layer = nn.Sequential(
+            PositionalEmbedding(positional_num),
+            nn.Linear(positional_num, time_emb_dim),
+            nn.SiLU(),
+            nn.Linear(time_emb_dim, 10),
+        ) if time_emb_dim is not None else None
+        '''
+        self.time_bias = nn.Sequential(nn.SiLU,
+            nn.Linear(time_emb_dim, out_channels)) if time_emb_dim is not None else None
+        '''
+        self.input_layer = nn.Linear(in_features=(latent_dim+time_emb_dim), out_features=latent_dim)
+        self.activation0 = nn.ReLU()
+        self.hidden_layer = nn.ModuleList()
 
+        for i in range(layer_num):
+          self.hidden_layer.append(HiddenLayer(latent_dim=latent_dim, time_dim=time_emb_dim))
+
+        self.output_layer = nn.Linear(in_features=latent_dim, out_features=latent_dim)
+        self.activation = nn.Sigmoid()
+
+    def forward(self, x, time, class_emb=None):
+
+        if self.time_emb_layer is not None:
+            if time is None:
+                raise ValueError("time conditioning was specified but time is not passed")
+            time_emb = self.time_emb_layer(time)  #[batch, latent_dim]
+
+        else:
+            time_emb = None
+
+        #x += time_emb
+        x = torch.cat((x, time_emb), dim=1)
+        #print('x.shape:', x.shape)
+        x = self.activation0(self.input_layer(x))
+        skip = []
+        skip.append(x)
+
+        '''
+        if self.time_bias is not None:
+            if time_emb is None:
+                raise ValueError("time conditioning was specified but time_emb is not passed")
+            x += self.time_bias(time_emb)[:, :, None, None]
+        '''
+
+        #print(x.shape)
+        #print(time_emb.shape)
+        for index, layer in enumerate(self.hidden_layer):
+            if (index == 0):
+                x = layer(x, time_emb)
+            else:
+                residual = skip.pop()
+                x = x + residual
+                x = layer(x, time_emb)
+
+            skip.append(x)
+
+        x = self.activation(self.output_layer(x))
 
 
 
